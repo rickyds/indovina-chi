@@ -22,8 +22,11 @@ class CharacterCard extends React.Component {
         
         return (
             <div className={classList} onClick={this.props.onClick}>
-              <img className="character-card__img" alt={this.props.name} src={this.props.image}/>
-              <p className="character-card__name">{this.props.name}</p>
+                <div class="character-card__face face--front">
+                    <img className="character-card__img" alt={this.props.name} src={this.props.image}/>
+                    <p className="character-card__name">{this.props.name}</p>
+                </div>
+                <div class="character-card__face face--back"></div>
             </div>
         );
     }
