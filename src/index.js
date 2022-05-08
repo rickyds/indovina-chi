@@ -22,11 +22,11 @@ class CharacterCard extends React.Component {
         
         return (
             <div className={classList} onClick={this.props.onClick}>
-                <div class="character-card__face face--front">
+                <div className="character-card__face face--front">
                     <img className="character-card__img" alt={this.props.name} src={this.props.image}/>
                     <p className="character-card__name">{this.props.name}</p>
                 </div>
-                <div class="character-card__face face--back"></div>
+                <div className="character-card__face face--back"></div>
             </div>
         );
     }
@@ -40,8 +40,10 @@ function Modal(props) {
         <div className={classList}>
             <div className="modal__container">
                 <div className="modal__header">
-                    <h3>{props.title}</h3>
-                    <button className="btn btn-close" onClick={props.handleClose}>X</button>
+                    <h3 className="modal__title">{props.title}</h3>
+                    {
+                        props.closeable ? (<button className="btn btn-close" onClick={props.handleClose}>X</button>) : null
+                    }
                 </div>
                 <div className="modal__body">
                     {props.children}
@@ -51,31 +53,67 @@ function Modal(props) {
     );
 }
 
+function PlayerBadge({playerName}) {
+    return(
+        <div className="player-badge">
+            <div className="player-badge__avatar">{playerName.substring(0,1)}</div>
+            <p className="player-badge__name">{playerName}</p>
+        </div>
+    );
+}
+
+function LoginModal(props) {
+    
+    return(
+        <Modal show={true} closeable={false} title="Indovina Chi?">
+            <>
+                <h2>Vuoi iniziare una nuova partita?</h2>
+                <p>Inserisci il tuo nickname</p>
+                <form className="form-row" onSubmit={props.onSubmit}>
+                    <input type="text" name="nickname" value={props.email} onChange={props.onChange} />
+                    <button className="btn btn-primary" type="submit">Gioca!</button>
+                </form>
+            </>
+        </Modal>
+    );
+}
+
 class Game extends React.Component {
     
     constructor(props) {
         super(props);
+        
         this.state = {
             initializing: true,
-            showModal: false,
+            loadingData: true,
+            currentModal: null,
             companyName: "",
             companyLogoUrl: "",
+            playerName: "",
             charactersData: null,
             characters: null,
             randomCharacterData: null
         };
+        
         this.handleCharacterClick = this.handleCharacterClick.bind(this);
         this.restartGame = this.restartGame.bind(this);
         this.getCharactersFromData = this.getCharactersFromData.bind(this);
         this.getRandomCharacterData = this.getRandomCharacterData.bind(this);
         this.initialize = this.initialize.bind(this);
         this.closeModal = this.closeModal.bind(this);
+        this.openLoginModal = this.openLoginModal.bind(this);
+        this.onLoginSubmit = this.onLoginSubmit.bind(this);
+        this.onLoginChange = this.onLoginChange.bind(this);
+        
         
         this.initialize();
     }
     
     initialize() {
+        
         fetch('data/settings.json').then((res)=>res.json()).then(data => {
+            
+            this.openLoginModal();
             
             const companyName = data.company.name;
             const companyLogoUrl = data.company.logo;
@@ -84,15 +122,42 @@ class Game extends React.Component {
             const randomCharacterData = this.getRandomCharacterData(charactersData);
             
             this.setState({
-                initializing: false,
+                loadingData: false,
                 companyName: companyName,
                 companyLogoUrl: companyLogoUrl,
                 charactersData: charactersData,
                 characters: characters,
                 randomCharacterData: randomCharacterData
-            })
+            });
         });
     }
+    
+    openLoginModal() {
+        
+        const loginModal = (<LoginModal closeable={false} nickname={this.state.playerName} onSubmit={this.onLoginSubmit} onChange={this.onLoginChange}/>);
+        this.setState({
+            currentModal: loginModal
+        });
+        
+    }
+                      
+    onLoginSubmit(e) {
+        e.preventDefault();
+        console.log("submit");
+        if (this.state.playerName.length > 1) {
+            this.setState({
+                currentModal: null,
+                initializing: false
+            });
+        }
+    }
+    
+    onLoginChange(e) {
+        this.setState({
+            playerName: e.target.value
+        });
+    }
+
     
     closeModal() {
         this.setState({showModal: false});
@@ -153,13 +218,18 @@ class Game extends React.Component {
     }
                                                           
   render() {
-      if (this.state.initializing) {
-          return(<><h1>Loading...</h1></>);
+      if (this.state.initializing || this.state.loadingData) {
+          return(
+              <>
+                <h1>Loading...</h1>
+                {this.state.currentModal ? this.state.currentModal : null}
+              </>);
       } else {
           return (
             <>
             <header className="header">
                 <img className="header__logo" alt={this.state.companyName} src={this.state.companyLogoUrl} />
+                <PlayerBadge playerName={this.state.playerName} />
             </header>
             <main className="main">
                 <div className="maincontent">
@@ -170,7 +240,7 @@ class Game extends React.Component {
                     <button className="btn btn-reset" onClick={this.restartGame}>Reset</button>
                 </div>
             </main>
-            <Modal show={this.state.showModal} handleClose={()=>this.closeModal()} />
+              {this.state.currentModal ? this.state.currentModal : null}
             </>
         );
       }
