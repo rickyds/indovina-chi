@@ -113,13 +113,11 @@ wss.on("connection", ws => {
     ws.onclose = function() {
         console.log(`Client ${ws.id} has disconnected!`);
         // rimuovo utente dall'elenco
-        console.log(users);
         users = users.filter(user=>user.id!==ws.id);
-        console.log(users);
+        console.log("logged users", users);
         // rimuovo utente dalla stanza
         let playerToNotify;
         for (let room of rooms) {
-            console.log(room);
             if (ws.id === room.player1) {
                 room.player1 = null;
                 playerToNotify = room.player2;

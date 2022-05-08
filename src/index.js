@@ -89,7 +89,9 @@ class Game extends React.Component {
             currentModal: null,
             companyName: "",
             companyLogoUrl: "",
-            playerName: "",
+            player: {name: ""},
+            opponent : null,
+            roomId: 0,
             charactersData: null,
             characters: null,
             randomCharacterData: null
@@ -104,6 +106,7 @@ class Game extends React.Component {
         this.openLoginModal = this.openLoginModal.bind(this);
         this.onLoginSubmit = this.onLoginSubmit.bind(this);
         this.onLoginChange = this.onLoginChange.bind(this);
+        this.connectToWebsocket = this.connectToWebsocket.bind(this);
         
         
         this.initialize();
@@ -134,7 +137,7 @@ class Game extends React.Component {
     
     openLoginModal() {
         
-        const loginModal = (<LoginModal closeable={false} nickname={this.state.playerName} onSubmit={this.onLoginSubmit} onChange={this.onLoginChange}/>);
+        const loginModal = (<LoginModal closeable={false} nickname={this.state.player.name} onSubmit={this.onLoginSubmit} onChange={this.onLoginChange}/>);
         this.setState({
             currentModal: loginModal
         });
@@ -142,19 +145,64 @@ class Game extends React.Component {
     }
                       
     onLoginSubmit(e) {
+        console.log("login submit");
         e.preventDefault();
-        console.log("submit");
-        if (this.state.playerName.length > 1) {
-            this.setState({
-                currentModal: null,
-                initializing: false
-            });
+        if (this.state.player.name.length > 1) {
+            // loggato
+            this.connectToWebsocket();
         }
     }
     
+    connectToWebsocket() {
+        
+        console.log("try to connect");
+        
+        const ws = new WebSocket("ws://localhost:8082");
+        //const playerName = this.state.player.name;
+        const that = this;
+        
+        ws.onopen = function() {
+            console.log("Connected to Server");
+            ws.send(JSON.stringify({
+                type: "login",
+                playerName: that.state.player.name
+            }));
+        };
+        
+        ws.onmessage = function ({data}) {
+                    
+            const jsonData = JSON.parse(data);
+
+            if (jsonData.type === "loggedin") {
+                console.log(jsonData.type);
+                console.log(that.state.player.name);
+                that.setState({
+                    player: {name: that.state.player.name, id: jsonData.id},
+                    roomId: jsonData.roomId
+                });
+            } else if (jsonData.type === "readytoplay") {
+                console.log(jsonData.type);
+                const opponentId = jsonData.player1 === that.state.player.id ? jsonData.player2 : jsonData.player1;
+                that.setState({
+                    opponent: {id: opponentId},
+                    initilizing: false,
+                    currentModal: null
+                });
+            }
+
+            //showMessage(`${jsonData.type}: ${data}`);
+        };
+
+        ws.onclose = function() { 
+            ws = null;
+            alert("Connection closed... refresh to try again!"); 
+        };
+    }
+    
     onLoginChange(e) {
+        
         this.setState({
-            playerName: e.target.value
+            player: {name: e.target.value}
         });
     }
 
@@ -218,7 +266,7 @@ class Game extends React.Component {
     }
                                                           
   render() {
-      if (this.state.initializing || this.state.loadingData) {
+      if (!this.state.opponent) {
           return(
               <>
                 <h1>Loading...</h1>
@@ -229,7 +277,7 @@ class Game extends React.Component {
             <>
             <header className="header">
                 <img className="header__logo" alt={this.state.companyName} src={this.state.companyLogoUrl} />
-                <PlayerBadge playerName={this.state.playerName} />
+                <PlayerBadge playerName={this.state.player.name} />
             </header>
             <main className="main">
                 <div className="maincontent">
