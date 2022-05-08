@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="./assets/w3.css">
+        <link rel="shortcut icon" href="./assets/favicon.ico" type="image/x-icon">
+        <title>WebSocket Web Client</title>
+    </head>
+    <body>
+        <h1>WebSocket Basics</h1>
+        <ul class="tsummary">
+            <li>allows two-way, event-driven communication between web browser and server</li>
+            <li>great for <strong>real-time</strong> applications</li>
+            <li>after this tutorial you should be able to create a simple Websockets app</li>
+        </ul>
+
+        <pre id="messages" style="width: 90%; margin-left: 5%; height: 200px; overflow: scroll">
+        </pre>
+        <input type="text" id="messageBox" placeholder="Type your message here" 
+            style="display: block; width: 90%; margin-bottom: 10px; margin-left: 5%; padding: 10px;" />
+        <button id="send" title="Send Message!" style="width: 90%; margin-left: 5%; height: 30px;">
+            Send Message
+        </button>
+
+        <script>
+            if ("WebSocket" in window) {
+                const sendBtn = document.querySelector('#send');
+                const messages = document.querySelector('#messages');
+                const messageBox = document.querySelector('#messageBox');
+                let myId;
+                let roomId;
+                let opponentsId;
+                
+                function showMessage(message) {
+                    messages.textContent += `\n${message}`;
+                    messages.scrollTop = messages.scrollHeight;
+                    messageBox.value = '';
+                }
+
+                let ws = new WebSocket("ws://localhost:8082");
+
+                ws.onopen = function() {
+                    console.log("Connected to Server");
+                    ws.send(JSON.stringify({
+                        type: "login",
+                        playerName: "Riccardo"
+                    }));
+                };
+
+                sendBtn.onclick = function() {
+                    if (ws) {
+                        
+                        ws.send(JSON.stringify({
+                            type: "question",
+                            message: messageBox.value,
+                            senderId: myId,
+                            receiverId: opponentsId,
+                            roomId: roomId
+                        }));
+                        
+                        showMessage(`ME: ${messageBox.value}`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                ws.onmessage = function ({data}) {
+                    
+                    const jsonData = JSON.parse(data);
+                    
+                    if (jsonData.type === "loggedin") {
+                        myId = jsonData.id;
+                        roomId = jsonData.roomId;
+                    }
+                    
+                    if (jsonData.type === "readytoplay") {
+                        opponentsId = jsonData.player1 === myId ? jsonData.player2 : jsonData.player1;
+                    }
+                    
+                    showMessage(`${jsonData.type}: ${data}`);
+                };
+
+                ws.onclose = function() { 
+                    ws = null;
+                    alert("Connection closed... refresh to try again!"); 
+                };
+
+            } else {
+                alert("WebSocket NOT supported by your Browser!");
+            }
+        </script>
+    </body>
+</html>
