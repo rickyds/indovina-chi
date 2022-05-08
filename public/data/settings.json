@@ -1,0 +1,32 @@
+{
+    "company": {
+        "name": "Logotel",
+        "logo": "logo.svg"
+    },
+    "characters": [
+        { "name": "Alex", "image": "characters/alex.jpg" },
+        { "name": "Alfred", "image": "characters/alfred.jpg" },
+        { "name": "Anita", "image": "characters/anita.jpg" },
+        { "name": "Anne", "image": "characters/anne.jpg" },
+        { "name": "Bernard", "image": "characters/bernard.jpg" },
+        { "name": "Bill", "image": "characters/bill.jpg" },
+        { "name": "Charles", "image": "characters/charles.jpg" },
+        { "name": "Claire", "image": "characters/claire.jpg" },
+        { "name": "David", "image": "characters/david.jpg" },
+        { "name": "Eric", "image": "characters/eric.jpg" },
+        { "name": "Frans", "image": "characters/frans.jpg" },
+        { "name": "George", "image": "characters/george.jpg" },
+        { "name": "Herman", "image": "characters/herman.jpg" },
+        { "name": "Joe", "image": "characters/joe.jpg" },
+        { "name": "Maria", "image": "characters/maria.jpg" },
+        { "name": "Max", "image": "characters/max.jpg" },
+        { "name": "Paul", "image": "characters/paul.jpg" },
+        { "name": "Peter", "image": "characters/peter.jpg" },
+        { "name": "Philip", "image": "characters/philip.jpg" },
+        { "name": "Richard", "image": "characters/richard.jpg" },
+        { "name": "Robert", "image": "characters/robert.jpg" },
+        { "name": "Sam", "image": "characters/sam.jpg" },
+        { "name": "Susan", "image": "characters/susan.jpg" },
+        { "name": "Tom", "image": "characters/tom.jpg" }
+    ]
+}
