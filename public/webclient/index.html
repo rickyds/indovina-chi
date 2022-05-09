@@ -8,7 +8,7 @@
         <title>WebSocket Web Client</title>
     </head>
     <body>
-        <h1>WebSocket Basics</h1>
+        <h1>WebSocket Web Client</h1>
         <ul class="tsummary">
             <li>allows two-way, event-driven communication between web browser and server</li>
             <li>great for <strong>real-time</strong> applications</li>
@@ -17,20 +17,61 @@
 
         <pre id="messages" style="width: 90%; margin-left: 5%; height: 200px; overflow: scroll">
         </pre>
+        <div id="badge" class="badge"></div>
         <input type="text" id="messageBox" placeholder="Type your message here" 
             style="display: block; width: 90%; margin-bottom: 10px; margin-left: 5%; padding: 10px;" />
-        <button id="send" title="Send Message!" style="width: 90%; margin-left: 5%; height: 30px;">
-            Send Message
-        </button>
+        <div class="form-row" style="margin-left: 5%; display: flex; gap: 10px">
+            <button id="sendQuestion" title="Send Message!" style="height: 30px;">
+                Invia Domanda
+            </button>
+            <button id="sendYes" title="Send YES!" style="height: 30px;">
+                Invia 'SI'
+            </button>
+            <button id="sendNo" title="Send NO!" style="height: 30px;">
+                Invia 'NO'
+            </button>
+            <button id="sendSolution" title="Send Solution" style="height: 30px;">
+                Invia Soluzione
+            </button>
+            <button id="endTurn" title="End Turn!" style="height: 30px;">
+                Passo!
+            </button>
+            <button id="newGame" title="Nuova partita" style="height: 30px;" hidden disabled>
+                Nuova partita
+            </button>
+        </div>
 
         <script>
             if ("WebSocket" in window) {
-                const sendBtn = document.querySelector('#send');
                 const messages = document.querySelector('#messages');
                 const messageBox = document.querySelector('#messageBox');
-                let myId;
+                const badge = document.querySelector('#badge');
+
+                const newGameBtn = document.querySelector('#newGame');
+
+                const myPlayer = {name: `Riccardo-${Math.floor(Math.random()*100)}`};
                 let roomId;
-                let opponentsId;
+                let opponentPlayer;
+                const stats = {
+                    player: null,
+                    gameStarted: 0,
+                    gameEnded: 0,
+                    gameWon: 0
+                }
+
+                const status = {
+                    STATUS_INIT: -1,
+                    WAITING_FOR_ANSWER: -2,
+                    WAITING_FOR_QUESTION: -3,
+                    WAITING_FOR_SOLUTION_OR_PASS: -4,
+                    WAITING_FOR_SOLUTION_RESULT: -5,
+                    GAME_ENDED: -6,
+                    QUESTION: 1,
+                    ANSWER: 2,
+                    SOLUTION_OR_PASS: 3
+                }
+                let currentPlayingStatus = status.STATUS_INIT;
+                
                 
                 function showMessage(message) {
                     messages.textContent += `\n${message}`;
@@ -38,53 +79,236 @@
                     messageBox.value = '';
                 }
 
+                function setupBadge(color) {
+                    badge.style.backgroundColor = color;
+                    // assegno finto id carta
+                    const fakeId = Math.floor(Math.random()*10);
+                    badge.innerText = fakeId;
+                    badge.setAttribute("characterId",fakeId);
+                }
+
+                function activateBadge(value) {
+                    const ACTIVE_CLASSNAME = "active";
+                    if (value) {
+                        badge.classList.add(ACTIVE_CLASSNAME);
+                    } else {
+                        badge.classList.remove(ACTIVE_CLASSNAME);
+                    }
+                }
+
+                function setStatus(statusCode) {
+
+                    const isStatusValid = (code) => {
+                        for (const c in status) {
+                            if (status[c] === code) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+
+                    if (!isStatusValid(statusCode)) {
+                        throw new Error("codice stato gioco non valido");
+                        return;
+                    }
+
+                    currentPlayingStatus = statusCode;
+                    activateBadge(statusCode > 0);
+                }
+
+                function getStatus() {
+                    return currentPlayingStatus;
+                }
+
                 let ws = new WebSocket("ws://localhost:8082");
 
                 ws.onopen = function() {
+                    setStatus(status.STATUS_INIT);
                     console.log("Connected to Server");
                     ws.send(JSON.stringify({
                         type: "login",
-                        playerName: "Riccardo"
+                        playerName: myPlayer.name
                     }));
                 };
-
-                sendBtn.onclick = function() {
-                    if (ws) {
-                        
-                        ws.send(JSON.stringify({
-                            type: "question",
-                            message: messageBox.value,
-                            senderId: myId,
-                            receiverId: opponentsId,
-                            roomId: roomId
-                        }));
-                        
-                        showMessage(`ME: ${messageBox.value}`);
-                    } else {
-                        alert("ERROR: Not connected... refresh to try again!");
-                    }
-                }
 
                 ws.onmessage = function ({data}) {
                     
                     const jsonData = JSON.parse(data);
                     
                     if (jsonData.type === "loggedin") {
-                        myId = jsonData.id;
+                        myPlayer.id = jsonData.id;
                         roomId = jsonData.roomId;
+                        showMessage(`[${jsonData.type}] ${data}`);
+                        showMessage("Sei in attesa un avversario... attendi");
+                        return;
+                    } else if (jsonData.type === "roomready") {
+
+                        if (jsonData.player1.id === myPlayer.id) {
+                            myPlayer.color = "red";
+                            opponentPlayer = jsonData.player2;
+                            setStatus(status.QUESTION);
+                        } else {
+                            myPlayer.color = "blue";
+                            opponentPlayer = jsonData.player1;
+                            setStatus(status.WAITING_FOR_QUESTION);
+                        }
+
+                        setupBadge(myPlayer.color);
+
+                    } else if (jsonData.type === "question") {
+                        showMessage(`[${jsonData.type}] ${opponentPlayer.name} ti chiede: ${jsonData.message}`);
+                        setStatus(status.ANSWER);
+                        return;
+                    } else if (jsonData.type === "answer") {
+                        showMessage(`[${jsonData.type}] ${opponentPlayer.name} risponde: ${jsonData.message}`);
+                        setStatus(status.SOLUTION_OR_PASS);
+                        return;
+                    } else if (jsonData.type === "endturn") {
+                        showMessage(`[${jsonData.type}] ${opponentPlayer.name} ti ha passato il turno`);
+                        setStatus(status.QUESTION);
+                        return;
+                    } else if (jsonData.type === "solution") {
+                        showMessage(`[${jsonData.type}] Per ${opponentPlayer.name} la tua carta è: ${jsonData.characterId}`);
+                        // analizzo soluzione avversario
+                        const correctSolution = jsonData.characterId === badge.getAttribute("characterId");
+                        // invio l'esito, che conosco
+                        ws.send(JSON.stringify({
+                            type: "solutionresult",
+                            result: correctSolution,
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        if (correctSolution) {
+                            showMessage(`HAI PERSO!`);
+                            setStatus(status.GAME_ENDED);
+                            newGameBtn.setAttribute("disabled", false);
+                            newGameBtn.setAttribute("hidden", false);
+                        } else {
+                            showMessage(`La soluzione di ${opponentPlayer.name} è sbagliata, è il tuo turno di gioco`);
+                            setStatus(status.QUESTION);
+                        }
+                        return;
+                    } else if (jsonData.type === "solutionresult") {
+                        const youWin = jsonData.result === true;
+                        const msg = youWin ? "La tua soluzione è corretta, HAI VINTO!" : `Soluzione sbagliata, tocca a ${opponentPlayer.name}`;
+                        if (youWin) {
+                            setStatus(status.GAME_ENDED);
+                            newGameBtn.setAttribute("disabled", false);
+                            newGameBtn.setAttribute("hidden", false);
+                        } else {
+                            setStatus(status.WAITING_FOR_QUESTION);
+                        }
+                        showMessage(`[${jsonData.type}] ${msg}`);
+                        return;
+                    } else if (jsonData.type === "quit") {
+                        showMessage(`[${jsonData.type}] ${data}`);
+                        showMessage("Sei in attesa un avversario... attendi");
+                        setStatus(status.STATUS_INIT);
+                        return;
                     }
+
+                    showMessage(`[${jsonData.type}] ${data}`);
                     
-                    if (jsonData.type === "readytoplay") {
-                        opponentsId = jsonData.player1 === myId ? jsonData.player2 : jsonData.player1;
-                    }
-                    
-                    showMessage(`${jsonData.type}: ${data}`);
                 };
 
                 ws.onclose = function() { 
                     ws = null;
                     alert("Connection closed... refresh to try again!"); 
                 };
+
+                document.querySelector('#sendQuestion').onclick = function() {
+                    if (getStatus() !== status.QUESTION) {return};
+                    if (ws) {
+                        ws.send(JSON.stringify({
+                            type: "question",
+                            message: messageBox.value,
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        setStatus(status.WAITING_FOR_ANSWER);
+                        showMessage(`ME: ${messageBox.value}`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                document.querySelector('#sendYes').onclick = function() {
+                    if (getStatus() !== status.ANSWER) {return};
+                    if (ws) {
+                        ws.send(JSON.stringify({
+                            type: "answer",
+                            message: "SI",
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        setStatus(status.WAITING_FOR_SOLUTION_OR_PASS);
+                        showMessage(`ME: SI`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                document.querySelector('#sendNo').onclick = function() {
+                    if (getStatus() !== status.ANSWER) {return};
+                    if (ws ) {
+                        ws.send(JSON.stringify({
+                            type: "answer",
+                            message: "NO",
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        setStatus(status.WAITING_FOR_SOLUTION_OR_PASS);
+                        showMessage(`ME: NO`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                document.querySelector('#sendSolution').onclick = function() {
+                    if (getStatus() !== status.SOLUTION_OR_PASS) {return};
+                    if (ws) {
+                        ws.send(JSON.stringify({
+                            type: "solution",
+                            characterId: messageBox.value,
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        setStatus(status.WAITING_FOR_SOLUTION_RESULT);
+                        showMessage(`ME: ${messageBox.value}`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                document.querySelector('#endTurn').onclick = function() {
+                    if (getStatus() !== status.SOLUTION_OR_PASS) {return};
+                    if (ws) {
+                        ws.send(JSON.stringify({
+                            type: "endturn",
+                            senderId: myPlayer.id,
+                            receiverId: opponentPlayer.id,
+                            roomId: roomId
+                        }));
+                        setStatus(status.WAITING_FOR_QUESTION);
+                        showMessage(`ME: ho passato il turno`);
+                    } else {
+                        alert("ERROR: Not connected... refresh to try again!");
+                    }
+                }
+
+                newGameBtn.onclick = () => {
+                    newGameBtn.setAttribute("disabled", true);
+                    newGameBtn.setAttribute("hidden", true);
+                    if (getStatus() !== status.GAME_ENDED) {
+                        return;
+                    };
+
+                }
 
             } else {
                 alert("WebSocket NOT supported by your Browser!");

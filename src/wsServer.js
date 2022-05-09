@@ -21,30 +21,27 @@ function createRoom() {
     return newRoom;
 }
 
-function getAvailableRoom(playerId) {
+function getAvailableRoom(player) {
     
-    const addToNewRoom = (playerId) => {
+    const addToNewRoom = (newPlayer) => {
         const room = createRoom();
-        room.player1 = playerId;
-        console.log(room);
+        room.player1 = newPlayer;
         return room;
     };
     
     if (rooms.length > 0 ) {
         for (const room of rooms) {
             if (!room.player1) {
-                room.player1 = playerId;
-                console.log(room);
+                room.player1 = player;
                 return room;
             } else if (!room.player2) {
-                room.player2 = playerId;
-                console.log(room);
+                room.player2 = player;
                 return room;
             }
         }
     }
     
-    return addToNewRoom(playerId);
+    return addToNewRoom(player);
 }
 
 function sendTo(receivers, content) {
@@ -67,6 +64,7 @@ function sendTo(receivers, content) {
 }
 
 wss.on("connection", ws => {
+
     ws.id = wss.getUniqueID();
     console.log(`New client connected with id: ${ws.id}`);
 
@@ -76,29 +74,38 @@ wss.on("connection", ws => {
         
         if (jsonData.type === "login") {
             
-            const availableRoom = getAvailableRoom(ws.id);
-            
+            // creao nuovo giocatore
             const newUser = {
                 id: ws.id,
-                playerName: jsonData.playerName,
-                roomId: availableRoom.roomId
+                name: jsonData.playerName
             };
+
+            // inserisco il giocatore in una stanza
+            const availableRoom = getAvailableRoom(newUser);
+            // salvo l'informazione della stanza in cui si trova
+            newUser.roomId = availableRoom.roomId;
+            // aggiungo il giocatore all'elenco di quelli connessi
             users.push(newUser);
-            //console.log(`Client ${ws.id}: ${JSON.stringify(newUser)}`)
-            console.log(newUser);
-            sendTo([ws.id],{type: "loggedin", ...newUser});
+            console.log("NEW PLAYER : ",newUser);
+            console.log("PLAYER ADDED TO ROOM : ", availableRoom);
+            // invio avvenuto login
+            sendTo([newUser.id],{type: "loggedin", ...newUser});
             
+            // controllo che la stanza da gioco sia stata riempita
             if (availableRoom.player1 && availableRoom.player2) {
-                
-                sendTo([availableRoom.player1, availableRoom.player2],{
-                    type: "readytoplay",
+                // invio info per avviare la partita
+                sendTo([availableRoom.player1.id, availableRoom.player2.id],{
+                    type: "roomready",
                     ...availableRoom
                 });
             }
             
-        } else if (jsonData.type === "question") {
+        } else if (jsonData.type === "question" || jsonData.type === "answer" || jsonData.type === "endturn") {
+
             sendTo([jsonData.receiverId],jsonData);
+
         } else {
+
             console.log(`Client ${ws.id}: ${data}`);
             wss.clients.forEach((client) => {
                 if (client !== ws && client.readyState === WebSocket.OPEN) {
@@ -118,13 +125,13 @@ wss.on("connection", ws => {
         // rimuovo utente dalla stanza
         let playerToNotify;
         for (let room of rooms) {
-            if (ws.id === room.player1) {
+            if (room.player1 && ws.id === room.player1.id) {
                 room.player1 = null;
-                playerToNotify = room.player2;
+                playerToNotify = room.player2 ? room.player2.id : null;
                 break;
-            } else if (ws.id === room.player2) {
+            } else if (room.player2 && ws.id === room.player2.id) {
                 room.player2 = null;
-                playerToNotify = room.player1;
+                playerToNotify = room.player1 ? room.player1.id : null;
                 break;
             }
         }
