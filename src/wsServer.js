@@ -1,9 +1,13 @@
 const WebSocket = require("ws");
 
 const wss = new WebSocket.Server({ port: 8082 });
+// Elenco utenti connessi al server
 let users = [];
+
+// Elenco stanze da gioco
 let rooms = [];
 
+// assegna ID univoco agli utenti appena connessi
 wss.getUniqueID = function () {
     function s4() {
         return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
@@ -11,6 +15,7 @@ wss.getUniqueID = function () {
     return s4() + s4() + '-' + s4();
 };
 
+// Crea una nuova stanza da gioco, assegnandole un ID
 function createRoom() {
     const newRoom = {
         roomId: rooms.length > 0 ? rooms.at(-1).roomId + 1 : 1,
@@ -21,7 +26,13 @@ function createRoom() {
     return newRoom;
 }
 
+// Dato un giocatore, lo assegna alla prima stanza da gioco libera disponibile tra quelle esistenti
+// Altrimenti ne crea una nuova
+// Viene restitito l'oggetto room della stanza in cui è stato collocato il giocatore
 function getAvailableRoom(player) {
+
+
+    console.log(player);
     
     const addToNewRoom = (newPlayer) => {
         const room = createRoom();
@@ -44,6 +55,8 @@ function getAvailableRoom(player) {
     return addToNewRoom(player);
 }
 
+// Metodo per inviare un messaggio websocket ad una lista di destinatari,
+// rappresentata dall'array receivers
 function sendTo(receivers, content) {
     
     const isReceiver = (id) => {
@@ -100,9 +113,50 @@ wss.on("connection", ws => {
                 });
             }
             
-        } else if (jsonData.type === "question" || jsonData.type === "answer" || jsonData.type === "endturn") {
+        } else if (
+            jsonData.type === "question" ||
+            jsonData.type === "answer" ||
+            jsonData.type === "endturn" || 
+            jsonData.type === "solution"
+            ) {
 
             sendTo([jsonData.receiverId],jsonData);
+
+        } else if (jsonData.type === "solutionresult") {
+
+            sendTo([jsonData.receiverId],jsonData);
+
+            // rimuovo utenti dalle stanze
+            for (let room of rooms) {
+                if (room.roomId  === jsonData.roomId) {
+                    room.player1 = null;
+                    room.player2 = null;
+                    console.log("Stanza svuotata", room);
+                    break;
+                } 
+            }
+            
+        } else if (jsonData.type === "newgame") {
+
+            // ottengo utente dall'elenco di quelli già connessi
+            const user = users.filter(u => u.id === jsonData.player.id)[0];
+
+            // inserisco il giocatore in una nuova stanza libera
+            const availableRoom = getAvailableRoom(user);
+            // salvo l'informazione della stanza in cui si trova
+            user.roomId = availableRoom.roomId;
+            console.log("EXISTING PLAYER ADDED TO ROOM : ", availableRoom);
+            // invio avvenuto login
+            sendTo([user.id],{type: "loggedin", ...user});
+            
+            // controllo che la stanza da gioco sia stata riempita
+            if (availableRoom.player1 && availableRoom.player2) {
+                // invio info per avviare la partita
+                sendTo([availableRoom.player1.id, availableRoom.player2.id],{
+                    type: "roomready",
+                    ...availableRoom
+                });
+            }
 
         } else {
 

@@ -1,40 +1,31 @@
 # Indovina Chi?
 
-Sviluppato da Riccardo De Silva.
+La mia versione digitale di "Indovina Chi?", giocabile online.
 
-## Available Scripts
+## Requisiti
 
-In the project directory, you can run:
+- NodeJS installato sul proprio computer
+- Una connessione internet attiva per scaricare tutte le dipendenze necessarie per la build
 
-### `npm start`
+## Comandi da eseguire per lanciare il gioco
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Nella root del progetto, eseguire da terminale:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### `npm install`
 
-### `npm test`
+Per installare sulla propria macchina tutte le dipendenze necessarie per lanciare l'applicazione
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### `npm run server`
 
-### `npm run build`
+Per avviare il WebSocket server all'indirizzo [ws://localhost:8082](ws://localhost:8082), indispensabile per poter giocare.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### `npm run start`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Per avviare l'applicazione.\
+Si aprirà una nuova finestra del tuo browser preferito all'indirizzo [http://localhost:3000](http://localhost:3000) .
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Configurazione del gioco
 
-### `npm run eject`
+Il file settings.json nella cartella public/data consente la configurazione del gioco a runtime, senza dover rilanciare la build dell'applicazione.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Il file di configurazione consente di impostare il numero delle caselle da indovinare, le immagini dei personaggi, il logo aziendale da mostrare nella barra in alto.

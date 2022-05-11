@@ -1,4 +1,5 @@
 {
+    "websocketUrl": "ws://localhost:8082",
     "company": {
         "name": "Logotel",
         "logo": "logo.svg"
